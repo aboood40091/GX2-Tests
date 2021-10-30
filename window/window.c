@@ -371,12 +371,14 @@ void WindowSwapBuffers()
     GX2SetTVEnable(true);
     GX2SetDRCEnable(true);
 
-    // No need to call GX2DrawDone() here, which makes sure all GX2 commands queued
-    // to the GPU have all been issued and completed
+    // Makes sure all GX2 commands queued to the GPU have all been issued and completed
+    //GX2DrawDone();
 
-    // Since the last commands issued were copying the color buffer to the scan buffers
+    // No need to call GX2DrawDone() here
+
+    // Since the last commands issued are copying the color buffer to the scan buffers
     // and flipping them, GX2WaitForFlip() will suffice in place of GX2DrawDone()
-    // while also performing our frame-rate-limiting set by the swap interval
+    // while also applying our frame-rate-limiting policy set by the swap interval
 
     GX2WaitForFlip();
 
