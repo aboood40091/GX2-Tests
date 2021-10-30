@@ -1,0 +1,11 @@
+obj
+Test1_Hello_World/*.exe
+Test1_Hello_World/*.rpx
+*.cbp
+*.d
+*.depend
+*.elf
+*.layout
+*.lst
+*.map
+*.o
