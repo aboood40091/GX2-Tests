@@ -15,12 +15,18 @@ int main()
     if (!WindowInit(1280, 720, &fb_width, &fb_height))
         return -1;
 
+    // Make window context current
+    //WindowMakeContextCurrent();
+    // No need, automatically done by WindowInit()
+
     f32 r = 0.0, r_step = 0.01;
     f32 g = 0.0, g_step = 0.02;
     f32 b = 0.0, b_step = 0.04;
 
     while (WindowIsRunning())
     {
+        // Window context should already be current at this point
+
 #ifdef TEST_WIN
 
         // Set the current clear color to the given color
@@ -35,7 +41,12 @@ int main()
         // nor a function to get the current color buffer
 
         // Clear the window color buffer explicitly with the given color
+        // Does not need a current context to be set
         GX2ClearColor(WindowGetColorBuffer(), r, g, b, 1.0f);
+
+        // GX2ClearColor invalidates the current context and the window context
+        // must be made current again
+        WindowMakeContextCurrent();
 
 #endif
         r += r_step;

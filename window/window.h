@@ -24,7 +24,7 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight);
 // Make the context of this window the current context
 void WindowMakeContextCurrent();
 
-// Set the swap interval
+// Set the swap interval (how many refreshes to wait before flipping the scan buffers)
 // Parameters:
 // - swap_interval: The swap interval is this value divided by the refresh rate (59.94 Hz on Wii U)
 //                  e.g. a value of 2 will give a swap interval of 2 / 59.94 = ~33 ms on Wii U

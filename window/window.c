@@ -4,6 +4,7 @@
 
 #ifdef TEST_WIN
 
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 static GLFWwindow* gWindowHandleWin = NULL;
@@ -11,6 +12,8 @@ static GLFWwindow* gWindowHandleWin = NULL;
 #else // TEST_GX2
 
 #include <coreinit/memdefaultheap.h>
+#include <coreinit/memfrmheap.h>
+#include <coreinit/memheap.h>
 #include <gx2/context.h>
 #include <gx2/display.h>
 #include <gx2/event.h>
@@ -27,6 +30,8 @@ static GX2ColorBuffer gColorBuffer;
 static void* gColorBufferImageData = NULL;
 static GX2DepthBuffer gDepthBuffer;
 static void* gDepthBufferImageData = NULL;
+static MEMHeapHandle gMEM1HeapHandle;
+static MEMHeapHandle gFgHeapHandle;
 
 #endif
 
@@ -47,6 +52,11 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight)
     // Disable resizing
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
+    // Request OpenGL v3.3 Core
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
     // Assume double-buffering is already on
 
     // Create the window instance
@@ -57,20 +67,8 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight)
         return false;
     }
 
-    if (pWidth || pHeight)
-    {
-        // Get the framebuffer width and height
-        int fb_width, fb_height;
-        glfwGetFramebufferSize(gWindowHandleWin, &fb_width, &fb_height);
-
-        if (pWidth)
-            *pWidth = fb_width;
-        if (pHeight)
-            *pHeight = fb_height;
-    }
-
-    // Make context of window current
-    WindowMakeContextCurrent();
+    int fb_width, fb_height;
+    glfwGetFramebufferSize(gWindowHandleWin, &fb_width, &fb_height);
 
 #else // TEST_GX2
 
@@ -94,6 +92,10 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight)
 
     // Initialize GX2
     GX2Init(initAttribs);
+
+    // Get the MEM1 heap and Foreground Bucket heap handles
+    gMEM1HeapHandle = MEMGetBaseHeapHandle(MEM_BASE_HEAP_MEM1);
+    gFgHeapHandle = MEMGetBaseHeapHandle(MEM_BASE_HEAP_FG);
 
     u32 fb_width, fb_height;
     u32 drc_width, drc_height;
@@ -143,7 +145,8 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight)
         );
 
         // Allocate TV scan buffer
-        gTvScanBuffer = MEMAllocFromDefaultHeapEx(
+        gTvScanBuffer = MEMAllocFromFrmHeapEx(
+            gFgHeapHandle,
             tv_scan_buffer_size,
             GX2_SCAN_BUFFER_ALIGNMENT // Required alignment
         );
@@ -186,7 +189,8 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight)
         );
 
         // Allocate DRC scan buffer
-        gDrcScanBuffer = MEMAllocFromDefaultHeapEx(
+        gDrcScanBuffer = MEMAllocFromFrmHeapEx(
+            gFgHeapHandle,
             drc_scan_buffer_size,
             GX2_SCAN_BUFFER_ALIGNMENT // Required alignment
         );
@@ -232,7 +236,8 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight)
     GX2InitColorBufferRegs(&gColorBuffer);
 
     // Allocate color buffer data
-    gColorBufferImageData = MEMAllocFromDefaultHeapEx(
+    gColorBufferImageData = MEMAllocFromFrmHeapEx(
+        gMEM1HeapHandle,
         gColorBuffer.surface.imageSize, // Data byte size
         gColorBuffer.surface.alignment  // Required alignment
     );
@@ -257,7 +262,7 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight)
     gDepthBuffer.surface.format = GX2_SURFACE_FORMAT_FLOAT_R32;
     gDepthBuffer.surface.aa = GX2_AA_MODE1X;
     gDepthBuffer.surface.use = GX2_SURFACE_USE_TEXTURE | GX2_SURFACE_USE_DEPTH_BUFFER;
-    gColorBuffer.surface.mipmaps = NULL;
+    gDepthBuffer.surface.mipmaps = NULL;
     gDepthBuffer.surface.tileMode = GX2_TILE_MODE_DEFAULT;
     gDepthBuffer.surface.swizzle  = 0;
     gDepthBuffer.viewMip = 0;
@@ -271,7 +276,8 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight)
     GX2InitDepthBufferRegs(&gDepthBuffer);
 
     // Allocate depth buffer data
-    gDepthBufferImageData = MEMAllocFromDefaultHeapEx(
+    gDepthBufferImageData = MEMAllocFromFrmHeapEx(
+        gMEM1HeapHandle,
         gDepthBuffer.surface.imageSize, // Data byte size
         gDepthBuffer.surface.alignment  // Required alignment
     );
@@ -299,24 +305,58 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight)
         return false;
     }
 
-    // Initialize it to default state and make it current
+    // Initialize it to default state
     GX2SetupContextStateEx(gContext, false);
+#endif
+
+    // Make context of window current
     WindowMakeContextCurrent();
+
+    // Set swap interval to 1 by default
+    WindowSetSwapInterval(1);
+
+#ifdef TEST_WIN
+
+    // Initialize GLEW
+    if (glewInit() != GLEW_OK)
+    {
+        WindowExit();
+        return false;
+    }
+
+    // Enable scissor test
+    glEnable(GL_SCISSOR_TEST);
+
+    // Set the default viewport and scissor
+    glViewport(0, 0, fb_width, fb_height);
+    glScissor(0, 0, fb_width, fb_height);
+
+    // Depth test is disabled by default in OpenGL
+
+#else // TEST_GX2
+
+    // Scissor test is always enabled in GX2
 
     // Set the default viewport and scissor
     GX2SetViewport(0, 0, fb_width, fb_height, 0.0f, 1.0f);
     GX2SetScissor(0, 0, fb_width, fb_height);
 
-    if (pWidth)
-        *pWidth = fb_width;
-    if (pHeight)
-        *pHeight = fb_height;
+    // Disable depth test
+    GX2SetDepthOnlyControl(
+        FALSE,                  // Depth Test;     equivalent to glDisable(GL_DEPTH_TEST)
+        FALSE,                  // Depth Write;    equivalent to glDepthMask(GL_FALSE)
+        GX2_COMPARE_FUNC_LEQUAL // Depth Function; equivalent to glDepthFunc(GL_LEQUAL)
+    );
 
     // TODO: ProcUI
 
 #endif
 
-    WindowSetSwapInterval(1);
+    // Set the output framebuffer size pointers
+    if (pWidth)
+        *pWidth = fb_width;
+    if (pHeight)
+        *pHeight = fb_height;
 
     gInitialized = true;
     return true;
@@ -361,25 +401,27 @@ void WindowSwapBuffers()
 
 #else
 
+    // Make sure to flush all commands to GPU before copying the color buffer to the scan buffers
+    // (Calling GX2DrawDone instead here causes slow downs)
+    GX2Flush();
+
     // Copy the color buffer to the TV and DRC scan buffers
     GX2CopyColorBufferToScanBuffer(&gColorBuffer, GX2_SCAN_TARGET_TV);
     GX2CopyColorBufferToScanBuffer(&gColorBuffer, GX2_SCAN_TARGET_DRC);
     // Flip
     GX2SwapScanBuffers();
 
+    // Reset context state for next frame
+    GX2SetContextState(gContext);
+
+    // Flush all commands to GPU before GX2WaitForFlip since it will block the CPU
+    GX2Flush();
+
     // Make sure TV and DRC are enabled
     GX2SetTVEnable(true);
     GX2SetDRCEnable(true);
 
-    // Makes sure all GX2 commands queued to the GPU have all been issued and completed
-    //GX2DrawDone();
-
-    // No need to call GX2DrawDone() here
-
-    // Since the last commands issued are copying the color buffer to the scan buffers
-    // and flipping them, GX2WaitForFlip() will suffice in place of GX2DrawDone()
-    // while also applying our frame-rate-limiting policy set by the swap interval
-
+    // Wait until swapping is done
     GX2WaitForFlip();
 
 #endif
