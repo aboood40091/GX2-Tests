@@ -307,6 +307,7 @@ bool WindowInit(u32 width, u32 height, u32* pWidth, u32* pHeight)
 
     // Initialize it to default state
     GX2SetupContextStateEx(gContext, false);
+
 #endif
 
     // Make context of window current

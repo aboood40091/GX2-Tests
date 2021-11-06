@@ -162,6 +162,7 @@ int main()
 
     // In this specific example, flushing the CPU cache for the vertex and fragment shader programs
     // is not needed since I made the data as static variables, but it's good practice
+    // (GPU cache must still be invalidated though)
     // GX2_INVALIDATE_MODE_CPU_SHADER = GX2_INVALIDATE_MODE_CPU | GX2_INVALIDATE_MODE_SHADER
     // * GX2_INVALIDATE_MODE_CPU: Flush CPU cache to main memory
     // * GX2_INVALIDATE_MODE_SHADER: Invalidate shader program cache on the GPU
@@ -227,7 +228,7 @@ int main()
     // do *not* require special alignment, but it is recommended that they are aligned by 64
     // (They do still require cache invalidation)
 
-    // Make sure to flush the CPU cache and invalidate GPU cache
+    // Make sure to flush CPU cache and invalidate GPU cache
     // (GX2_INVALIDATE_MODE_ATTRIBUTE_BUFFER: Invalidate attribute buffer cache on the GPU)
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, (void*)pos_data, sizeof(pos_data));
 
@@ -325,10 +326,11 @@ int main()
     // Value of 0 will force the type back to per-vertex for this attribute
     pos_stream.aluDivisor = 0;
 
-    // The attribute stream is not properly initialized
+    // The attribute stream is now properly initialized
     // Time to initialize the fetch shader
 
     // First, allocate memory for the fetch shader program
+    // (The user is responsible for freeing it when the shader is no longer needed)
     u32 triangle_FSH_size = GX2CalcFetchShaderSizeEx(
         1,                                  // Number of attribute streams
         GX2_FETCH_SHADER_TESSELLATION_NONE, // No Tessellation
@@ -349,7 +351,7 @@ int main()
         GX2_TESSELLATION_MODE_DISCRETE      // ^^^^^^^^^^^^^^^
     );
 
-    // Make sure to flush the CPU cache and invalidate GPU cache
+    // Make sure to flush CPU cache and invalidate GPU cache
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_SHADER, triangle_FSH.program, triangle_FSH.size);
 
 #endif

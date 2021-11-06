@@ -20,3 +20,4 @@ GX2:
 * Test 1: Simple Hello World program.  
 * Test 2: Simple test program for creating the "window" (GLFW window on PC, TV screen on Wii U). Renders animated colors through the color buffer clear color.  
 * Test 3: Port of Hello Triangle example from LearnOpenGL.  
+    Test 3.5: Second half of the Hello Triangle example from LearnOpenGL. Draws a square (with optional wireframe mode).  
