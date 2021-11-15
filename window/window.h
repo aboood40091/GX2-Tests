@@ -3,12 +3,12 @@
 #ifndef WINDOW_H_
 #define WINDOW_H_
 
+#include <test_types.h>
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif // __cplusplus
-
-#include <test_types.h>
 
 // Initialize the window
 // Parameters:

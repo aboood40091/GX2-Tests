@@ -1,3 +1,6 @@
+#ifndef TEST_TYPES_H_
+#define TEST_TYPES_H_
+
 #ifdef __cplusplus
 #include <cstddef>
 #else
@@ -19,3 +22,5 @@ typedef uint64_t u64;
 
 typedef float  f32;
 typedef double f64;
+
+#endif // TEST_TYPES_H_
